@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub User Finder V2</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+  body { background-color: #121212; color: #fff; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 50px 0; }
+  .container { background-color: #1e1e1e; padding: 30px; border-radius: 15px; width: 90%; max-width: 700px; text-align: center; box-shadow: 0 0 20px rgba(0,0,0,0.5); animation: fadeIn 1s ease-in-out; }
+  input[type="text"] { width: 70%; padding: 10px; border-radius: 10px; border: none; margin-bottom: 20px; font-size: 16px; outline: none; }
+  button { padding: 10px 20px; border: none; border-radius: 10px; background-color: #ff6f61; color: #fff; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+  button:hover { transform: scale(1.05); background-color: #ff4c3b; }
+  .user-info { margin-top: 20px; text-align: left; opacity: 0; animation: fadeInInfo 1s forwards; }
+  .user-info h2 { margin-bottom: 10px; text-align:center; }
+  .user-info p { margin-bottom: 5px; }
+  .avatar { width: 100px; height: 100px; border-radius: 50%; margin-bottom: 10px; border: 3px solid #ff6f61; display:block; margin-left:auto; margin-right:auto; }
+  .repos { margin-top: 20px; display: grid; grid-template-columns: 1fr; gap: 15px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+  .repo-card { background-color: #2a2a2a; padding: 15px; border-radius: 10px; transition: transform 0.2s; }
+  .repo-card:hover { transform: scale(1.02); background-color: #333; }
+  .repo-card a { color: #ff6f61; text-decoration: none; font-weight: bold; }
+  .repo-card a:hover { text-decoration: underline; }
+  @keyframes fadeIn { from {opacity: 0; transform: translateY(-20px);} to {opacity:1; transform: translateY(0);} }
+  @keyframes fadeInInfo { from {opacity:0;} to {opacity:1;} }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>GitHub User Finder V2</h1>
+  <input type="text" id="username" placeholder="Enter GitHub username">
+  <button onclick="fetchGitHubUser()">Search</button>
+
+  <div id="userInfo" class="user-info"></div>
+  <div id="repos" class="repos"></div>
+</div>
+
+<script>
+async function fetchGitHubUser() {
+  const username = document.getElementById('username').value.trim();
+  const userInfoDiv = document.getElementById('userInfo');
+  const reposDiv = document.getElementById('repos');
+
+  userInfoDiv.innerHTML = "Loading...";
+  reposDiv.innerHTML = "";
+
+  if(!username) {
+    userInfoDiv.innerHTML = "<p>Please enter a username!</p>";
+    return;
+  }
+
+  try {
+    const userResponse = await fetch(`https://api.github.com/users/${username}`);
+    if(userResponse.status === 200) {
+      const userData = await userResponse.json();
+
+      // Display user info
+      userInfoDiv.innerHTML = `
+        <img src="${userData.avatar_url}" alt="Avatar" class="avatar">
+        <h2>${userData.name ? userData.name : userData.login}</h2>
+        <p><strong>Username:</strong> ${userData.login}</p>
+        <p><strong>Bio:</strong> ${userData.bio ? userData.bio : 'N/A'}</p>
+        <p><strong>Company:</strong> ${userData.company ? userData.company : 'N/A'}</p>
+        <p><strong>Location:</strong> ${userData.location ? userData.location : 'N/A'}</p>
+        <p><strong>Public Repos:</strong> ${userData.public_repos}</p>
+        <p><strong>Followers:</strong> ${userData.followers} | <strong>Following:</strong> ${userData.following}</p>
+        <p style="text-align:center"><a href="${userData.html_url}" target="_blank">View Profile</a></p>
+      `;
+
+      // Fetch repositories
+      const reposResponse = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=50`);
+      const reposData = await reposResponse.json();
+
+      if(reposData.length > 0){
+        reposData.forEach(repo => {
+          const repoCard = document.createElement('div');
+          repoCard.className = 'repo-card';
+          repoCard.innerHTML = `
+            <a href="${repo.html_url}" target="_blank">${repo.name}</a>
+            <p>${repo.description ? repo.description : 'No description'}</p>
+            <p>⭐ ${repo.stargazers_count} | 🍴 ${repo.forks_count}</p>
+          `;
+          reposDiv.appendChild(repoCard);
+        });
+      } else {
+        reposDiv.innerHTML = "<p style='text-align:center'>No public repositories found.</p>";
+      }
+
+    } else {
+      userInfoDiv.innerHTML = `<p>User not found! Status code: ${userResponse.status}</p>`;
+    }
+  } catch (error) {
+    userInfoDiv.innerHTML = `<p>Error fetching data!</p>`;
+    console.error(error);
+  }
+}
+</script>
+
+</body>
+</html>
